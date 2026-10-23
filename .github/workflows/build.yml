@@ -2,6 +2,9 @@ name: repository-regression-tests
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - test/rich-plugin-repositories-beta
 
 permissions:
   contents: read
