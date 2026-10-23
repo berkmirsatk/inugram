@@ -30,7 +30,7 @@ import org.telegram.ui.Components.UniversalAdapter
 
 class PluginRepoActivity(private val repo: PluginRepo) : SettingsPageActivity() {
     private val posts = ArrayList<Pair<PluginRepoPost, PluginManifest>>()
-    private val rows = HashMap<Int, PluginRepoRow>()
+    private val rows = HashMap<Long, PluginRepoRow>()
     private var nextOffsetId = 0
     private var exhausted = false
     private var loading = false
@@ -104,7 +104,7 @@ class PluginRepoActivity(private val repo: PluginRepo) : SettingsPageActivity() 
     }
 
     private fun buildRow(post: PluginRepoPost, manifest: PluginManifest): UItem {
-        val row = rows.getOrPut(post.messageId) { PluginRepoRow(context) }
+        val row = rows.getOrPut(post.document.id) { PluginRepoRow(context) }
         val installed = PluginManager.findUpdateTarget(manifest)
         val update = installed != null && PluginRepos.isUpdate(installed, post, manifest)
         val status = when {
@@ -126,7 +126,7 @@ class PluginRepoActivity(private val repo: PluginRepo) : SettingsPageActivity() 
             if (installed != null && !update) presentFragment(PluginInfoActivity(installed))
             else installRepoPost(this, post)
         }
-        return UItem.asCustom(row).apply { id = ITEM_BASE + (post.messageId and 0xffff) }
+        return UItem.asCustom(row).apply { id = ITEM_BASE + (post.document.id.hashCode() and 0xffff) }
     }
 
     override fun onClick(item: UItem, view: View, position: Int, x: Float, y: Float) {
