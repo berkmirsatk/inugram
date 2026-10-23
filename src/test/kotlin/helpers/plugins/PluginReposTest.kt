@@ -21,6 +21,9 @@ class PluginReposTest {
         resetBridge()
         TestApp.signInAs(0, user(100L, "selfuser"))
         TestApp.putChat(broadcast(repo.channelId, repo.username))
+        // Stock controllers can send requests during their first initialization.
+        settle()
+        connections().sent.clear()
     }
 
     private fun document(id: Long, name: String, reference: Byte = 1) = TLRPC.TL_document().apply {
