@@ -217,7 +217,7 @@ jobs:
           "$tools/apksigner" verify "$apk"
           "$tools/aapt" dump badging "$apk" > "$RUNNER_TEMP/beta-badging.txt"
           head -n 1 "$RUNNER_TEMP/beta-badging.txt"
-          grep -q "^package: name='desu.inugram.repotest' " "$RUNNER_TEMP/beta-badging.txt"
+          grep -q "^package: name='desu.inugram.beta' " "$RUNNER_TEMP/beta-badging.txt"
 
       - name: stage artifacts
         run: |
