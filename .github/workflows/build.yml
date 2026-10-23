@@ -53,8 +53,6 @@ jobs:
         include:
           - variant: full
             worktree: worktree
-          - variant: pluginless
-            worktree: worktree-pluginless
     outputs:
       apk-full-name: ${{ steps.info.outputs.apk-full-name }}
       apk-pluginless-name: ${{ steps.info.outputs.apk-pluginless-name }}
@@ -206,17 +204,27 @@ jobs:
           CCACHE_COMPILERCHECK: content
           CCACHE_SLOPPINESS: time_macros,file_macro,include_file_mtime,include_file_ctime,locale,system_headers
           CCACHE_BASEDIR: ${{ github.workspace }}/${{ matrix.worktree }}
-        run: ./gradlew --no-daemon :TMessagesProj_App:assembleRelease
+        run: ./gradlew --no-daemon -I ../scripts/ci/beta-test.init.gradle :TMessagesProj_App:assembleRelease
 
       - name: show ccache stats
         if: always()
         run: ccache -s -v
 
+      - name: verify beta package identity and signature
+        run: |
+          apk='worktree/TMessagesProj_App/build/outputs/apk/release/app.apk'
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$tools/apksigner" verify "$apk"
+          "$tools/aapt" dump badging "$apk" > "$RUNNER_TEMP/beta-badging.txt"
+          head -n 1 "$RUNNER_TEMP/beta-badging.txt"
+          grep -q "^package: name='desu.inugram.beta' " "$RUNNER_TEMP/beta-badging.txt"
+
       - name: stage artifacts
         run: |
           mkdir -p out
-          apk='${{ matrix.variant == 'full' && steps.info.outputs.apk-full-name || steps.info.outputs.apk-pluginless-name }}'
+          apk='inugram-rich-repositories-beta.apk'
           cp '${{ matrix.worktree }}/TMessagesProj_App/build/outputs/apk/release/app.apk' "out/$apk"
+          (cd out && sha256sum "$apk" > SHA256SUMS.txt)
           if [ '${{ matrix.variant }}' != full ]; then
             exit 0
           fi
@@ -227,17 +235,16 @@ jobs:
             --argjson verCode '${{ steps.info.outputs.ver-code }}' \
             --argjson appVerCode '${{ steps.info.outputs.app-ver-code }}' \
             --argjson buildNum '${{ steps.info.outputs.build-num }}' \
-            --arg apkFull '${{ steps.info.outputs.apk-full-name }}' \
-            --arg apkPluginless '${{ steps.info.outputs.apk-pluginless-name }}' \
+            --arg apkFull "$apk" \
             --arg baseTag "$base" \
             --arg commitSha "$GITHUB_SHA" \
             --arg repo "$GITHUB_REPOSITORY" \
-            '{verName:$verName,verCode:$verCode,appVerCode:$appVerCode,buildNum:$buildNum,apkFiles:{full:$apkFull,pluginless:$apkPluginless},baseTag:(if $baseTag == "" then null else $baseTag end),commitSha:$commitSha,repo:$repo}' \
+            '{verName:$verName,verCode:$verCode,appVerCode:$appVerCode,buildNum:$buildNum,apkFiles:{full:$apkFull},baseTag:(if $baseTag == "" then null else $baseTag end),commitSha:$commitSha,repo:$repo}' \
             > out/build-info.json
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ${{ env.ARTIFACT_NAME }}-unsigned-${{ matrix.variant }}
+          name: inugram-rich-repositories-beta
           path: out/*
           if-no-files-found: error
           retention-days: 1
