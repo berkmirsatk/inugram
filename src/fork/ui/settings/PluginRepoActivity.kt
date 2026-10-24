@@ -31,6 +31,8 @@ import org.telegram.ui.Components.UniversalAdapter
 class PluginRepoActivity(private val repo: PluginRepo) : SettingsPageActivity() {
     private val posts = ArrayList<Pair<PluginRepoPost, PluginManifest>>()
     private val rows = HashMap<Long, PluginRepoRow>()
+    // document ids are random 64-bit values, so number them as first seen to keep item ids unique
+    private val itemIds = HashMap<Long, Int>()
     private var nextOffsetId = 0
     private var exhausted = false
     private var loading = false
@@ -126,7 +128,7 @@ class PluginRepoActivity(private val repo: PluginRepo) : SettingsPageActivity() 
             if (installed != null && !update) presentFragment(PluginInfoActivity(installed))
             else installRepoPost(this, post)
         }
-        return UItem.asCustom(row).apply { id = ITEM_BASE + (post.document.id.hashCode() and 0xffff) }
+        return UItem.asCustom(row).apply { id = ITEM_BASE + itemIds.getOrPut(post.document.id) { itemIds.size } }
     }
 
     override fun onClick(item: UItem, view: View, position: Int, x: Float, y: Float) {

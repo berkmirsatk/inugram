@@ -121,21 +121,15 @@ object PluginRepos {
                 limit = PAGE_SIZE
             }
             ConnectionsManager.getInstance(account).sendRequest(req) { response, _ ->
-                response?.disableFree = true
                 AndroidUtilities.runOnUIThread {
-                    try {
-                        val res = response as? TLRPC.messages_Messages ?: return@runOnUIThread callback(null)
-                        val mc = MessagesController.getInstance(account)
-                        mc.putUsers(res.users, false)
-                        mc.putChats(res.chats, false)
-                        val more = res.messages.size >= PAGE_SIZE
-                        val nextOffset = if (more) res.messages.last().id else 0
-                        loadPosts(account, repo, peer, res.messages) { posts ->
-                            callback(posts?.let { Page(it, nextOffset) })
-                        }
-                    } finally {
-                        response?.disableFree = false
-                        response?.freeResources()
+                    val res = response as? TLRPC.messages_Messages ?: return@runOnUIThread callback(null)
+                    val mc = MessagesController.getInstance(account)
+                    mc.putUsers(res.users, false)
+                    mc.putChats(res.chats, false)
+                    val more = res.messages.size >= PAGE_SIZE
+                    val nextOffset = if (more) res.messages.last().id else 0
+                    loadPosts(account, repo, peer, res.messages) { posts ->
+                        callback(posts?.let { Page(it, nextOffset) })
                     }
                 }
             }
@@ -155,16 +149,10 @@ object PluginRepos {
             id = message.id
         }
         ConnectionsManager.getInstance(account).sendRequest(req) { response, _ ->
-            response?.disableFree = true
             AndroidUtilities.runOnUIThread {
-                try {
-                    callback((response as? TLRPC.messages_Messages)?.messages?.firstOrNull {
-                        it.id == message.id && it.rich_message?.part == false
-                    })
-                } finally {
-                    response?.disableFree = false
-                    response?.freeResources()
-                }
+                callback((response as? TLRPC.messages_Messages)?.messages?.firstOrNull {
+                    it.id == message.id && it.rich_message?.part == false
+                })
             }
         }
     }
@@ -301,22 +289,16 @@ object PluginRepos {
             id.add(post.messageId)
         }
         ConnectionsManager.getInstance(account).sendRequest(req) { response, _ ->
-            response?.disableFree = true
             AndroidUtilities.runOnUIThread {
-                try {
-                    val message = (response as? TLRPC.messages_Messages)?.messages?.firstOrNull { it.id == post.messageId }
-                    if (message == null) {
-                        Utilities.globalQueue.postRunnable { callback(null) }
-                    } else {
-                        val peer = MessagesController.getInstance(account).getInputPeer(-post.repo.channelId)
-                        loadFullMessage(account, peer, message) { full ->
-                            val document = full?.let(::pluginDocuments)?.firstOrNull { it.id == post.document.id }
-                            Utilities.globalQueue.postRunnable { callback(document) }
-                        }
+                val message = (response as? TLRPC.messages_Messages)?.messages?.firstOrNull { it.id == post.messageId }
+                if (message == null) {
+                    Utilities.globalQueue.postRunnable { callback(null) }
+                } else {
+                    val peer = MessagesController.getInstance(account).getInputPeer(-post.repo.channelId)
+                    loadFullMessage(account, peer, message) { full ->
+                        val document = full?.let(::pluginDocuments)?.firstOrNull { it.id == post.document.id }
+                        Utilities.globalQueue.postRunnable { callback(document) }
                     }
-                } finally {
-                    response?.disableFree = false
-                    response?.freeResources()
                 }
             }
         }
